@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Quick Dialer</string>
+    <string name="title_activity_quick_dialer">Quick Dialer - Reliance India</string>  
+    <string name="title_quick_dialer_settings">Quick Dialer Settings</string>      
+        
+    <string name="pick_contact">Pick a Contact to Dial</string>
+    <string name="pick_number">Pick a Number to Dial</string>
+    <string name="ok">Done</string>
+    
+    <string name="no_phone_numbers">Selected contact has no phone numbers</string>
+    <string name="no_access_number_mini">Set the access number in settings</string>   
+    <string name="no_access_number_detail">No access number set. Use settings menu to set the access number</string>       
+        
+    <string name="menu_settings">Settings</string>
+    <string name="menu_help">Help</string>
+    
+    <string name="menu_help_title">Quick Dialer - Help</string>  
+    <string name="menu_help_message">* Set the country code prefix (+91 for India) in your contact\'s number before calling that number.\n
+        * Set access number for Reliance in settings. Find access number for your area at https://www.relianceglobalcall.com/Tollfree.aspx \n
+        * 408-786-5015 (local access number for the San Francisco bay area) is set by default.\n
+        * Must register your mobile phone number with Reliance before you can make any call.       
+        </string>     
+</resources>

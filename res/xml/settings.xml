@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    
+    <EditTextPreference
+        android:key="access_number"
+        android:title="Access Number"
+        android:summary="Reliance India call access phone number with area code" 
+        android:defaultValue="408-786-5015"/>
+    
+</PreferenceScreen>
