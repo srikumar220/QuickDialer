@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.arnavsoft.quickdial.R;
+import com.arnavsoft.quickdial.data.CallDetail;
 import com.google.analytics.tracking.android.EasyTracker;
 import com.google.analytics.tracking.android.TrackedActivity;
 
@@ -12,7 +13,6 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -20,6 +20,8 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Resources.NotFoundException;
 import android.database.Cursor;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.text.SpannableString;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -32,9 +34,15 @@ import android.widget.Toast;
 
 public class QuickDialer extends TrackedActivity implements OnSharedPreferenceChangeListener{
 	
-	private static final int PICK_CONTACT = 0;
+	private static final int REQUEST_PICK_CONTACT = 0;
+	
 	private static final String SEPERATOR = ":: ";	
 	private static String accessNumber;
+	
+	private CallDetail callDetail;
+	
+    TelephonyManager telephonyManager;
+    PhoneStateMonitor phoneStateListener;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -43,6 +51,7 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
         
         // Make the default preferences to take effect.
         PreferenceManager.setDefaultValues(this, R.xml.settings, false);
+        monitorPhoneState();
         
         Button pickContact = (Button) findViewById(R.id.pickContact); 
         pickContact.setOnClickListener(new View.OnClickListener()
@@ -54,7 +63,7 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
         			noAccessNumber.show();
                 } else {       		        		
 	        		Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
-	        		startActivityForResult(pickContact, PICK_CONTACT);
+	        		startActivityForResult(pickContact, REQUEST_PICK_CONTACT);
                 }
         	}
         });
@@ -68,123 +77,155 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {  
-        if (resultCode == RESULT_OK) {
-            switch (requestCode) {  
-            case PICK_CONTACT:
-            	Cursor cursor = null;
-            	try {
-					final List<String> phoneNumbers = new ArrayList<String>();
-					Uri contactUri  = data.getData();
-					String contactId = contactUri.getLastPathSegment();  
-					cursor = getContentResolver().query(Phone.CONTENT_URI, null, Phone.CONTACT_ID + "=?", new String[] {contactId}, null);
-					for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-						String label = null;
-						switch (cursor.getInt(cursor.getColumnIndex(Phone.TYPE))) {
-						case Phone.TYPE_HOME:
-							label = "Home";
-							break;							
-						case Phone.TYPE_MOBILE:
-							label = "Mobile";
-							break;							
-						case Phone.TYPE_WORK:
-							label = "Work";
-							break;							
-						case Phone.TYPE_FAX_WORK:
-							label = "Fax Work";
-							break;							
-						case Phone.TYPE_FAX_HOME:
-							label = "Fax Home";
-							break;							
-						case Phone.TYPE_PAGER:
-							label = "Pager";
-							break;							
-						case Phone.TYPE_OTHER:
-							label = "Other";
-							break;							
-						case Phone.TYPE_CALLBACK:
-							label = "Callback";
-							break;							
-						case Phone.TYPE_CAR:
-							label = "Car";
-							break;							
-						case Phone.TYPE_COMPANY_MAIN:
-							label = "Company Main";
-							break;							
-						case Phone.TYPE_ISDN:
-							label = "Isdn";
-							break;							
-						case Phone.TYPE_MAIN:
-							label = "Main";
-							break;							
-						case Phone.TYPE_OTHER_FAX:
-							label = "Other Fax";
-							break;							
-						case Phone.TYPE_RADIO:
-							label = "Radio";
-							break;							
-						case Phone.TYPE_TELEX:
-							label = "Telex";
-							break;							
-						case Phone.TYPE_TTY_TDD:
-							label = "Tty Tdd";
-							break;							
-						case Phone.TYPE_WORK_MOBILE:
-							label = "Work Mobile";
-							break;							
-						case Phone.TYPE_WORK_PAGER:
-							label = "Work Pager";
-							break;							
-						case Phone.TYPE_ASSISTANT:
-							label = "Assistant";
-							break;							
-						case Phone.TYPE_MMS:
-							label = "MMS:";
-							break;							
-						case Phone.TYPE_CUSTOM:
-							label = cursor.getString(cursor.getColumnIndex(Phone.LABEL));
-							break;
-						}
-						
-						phoneNumbers.add(label + SEPERATOR + cursor.getString(cursor.getColumnIndex(Phone.DATA)));
-					} 
-					int phoneNumberCount = phoneNumbers.size();
-					if (phoneNumberCount == 0) {
-						Toast noNumbers = Toast.makeText(this, R.string.no_phone_numbers, Toast.LENGTH_LONG);
-						noNumbers.show();						
+        if (requestCode == REQUEST_PICK_CONTACT && resultCode == RESULT_OK) {
+        	String label = null;
+        	String contactName = null;
+        	Cursor cursor = null;
+        	
+        	try {
+				final List<String> phoneNumbers = new ArrayList<String>();
+				Uri contactUri  = data.getData();
+				String contactId = contactUri.getLastPathSegment();  
+				cursor = getContentResolver().query(Phone.CONTENT_URI, null, Phone.CONTACT_ID + "=?", new String[] {contactId}, null);
+				
+				for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+					contactName = cursor.getString(cursor.getColumnIndex(Phone.DISPLAY_NAME));
+					label = null;
+					
+					switch (cursor.getInt(cursor.getColumnIndex(Phone.TYPE))) {
+					case Phone.TYPE_HOME:
+						label = "Home";
+						break;							
+					case Phone.TYPE_MOBILE:
+						label = "Mobile";
+						break;							
+					case Phone.TYPE_WORK:
+						label = "Work";
+						break;							
+					case Phone.TYPE_FAX_WORK:
+						label = "Fax Work";
+						break;							
+					case Phone.TYPE_FAX_HOME:
+						label = "Fax Home";
+						break;							
+					case Phone.TYPE_PAGER:
+						label = "Pager";
+						break;							
+					case Phone.TYPE_OTHER:
+						label = "Other";
+						break;							
+					case Phone.TYPE_CALLBACK:
+						label = "Callback";
+						break;							
+					case Phone.TYPE_CAR:
+						label = "Car";
+						break;							
+					case Phone.TYPE_COMPANY_MAIN:
+						label = "Company Main";
+						break;							
+					case Phone.TYPE_ISDN:
+						label = "Isdn";
+						break;							
+					case Phone.TYPE_MAIN:
+						label = "Main";
+						break;							
+					case Phone.TYPE_OTHER_FAX:
+						label = "Other Fax";
+						break;							
+					case Phone.TYPE_RADIO:
+						label = "Radio";
+						break;							
+					case Phone.TYPE_TELEX:
+						label = "Telex";
+						break;							
+					case Phone.TYPE_TTY_TDD:
+						label = "Tty Tdd";
+						break;							
+					case Phone.TYPE_WORK_MOBILE:
+						label = "Work Mobile";
+						break;							
+					case Phone.TYPE_WORK_PAGER:
+						label = "Work Pager";
+						break;							
+					case Phone.TYPE_ASSISTANT:
+						label = "Assistant";
+						break;							
+					case Phone.TYPE_MMS:
+						label = "MMS:";
+						break;							
+					case Phone.TYPE_CUSTOM:
+						label = cursor.getString(cursor.getColumnIndex(Phone.LABEL));
+						break;
 					}
-					else if (phoneNumberCount == 1) {						
-						String numberToDial = getPhoneNumberPart(phoneNumbers.get(0));
-						Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
-						startActivity(makeCall);
-					}
-					else if (phoneNumberCount > 1) {
-						CharSequence[] allNumbers = phoneNumbers.toArray(new String[phoneNumbers.size()]);
-						AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-						dialogBuilder.setTitle(R.string.pick_number);
-						dialogBuilder.setItems(allNumbers, new DialogInterface.OnClickListener() {							
-							@Override
-							public void onClick(DialogInterface dialog, int selectedNumberIdx) {
-								String numberToDial = getPhoneNumberPart(phoneNumbers.get(selectedNumberIdx));
-								Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
-								startActivity(makeCall);
-							}
-						});
-						
-						AlertDialog pickNumberDialog = dialogBuilder.create();
-						pickNumberDialog.show();
-					}
-				} catch (NotFoundException e) {
-					e.printStackTrace();
+					
+					phoneNumbers.add(label + SEPERATOR + cursor.getString(cursor.getColumnIndex(Phone.DATA)));
 				}
-            	finally {
-            		if (cursor != null) {
-            			cursor.close();
-            		}
-            	}
-            }
-        }  	
-    }
+				
+				
+				QuickDialerApplication quickDialerApplication = (QuickDialerApplication) getApplication();
+				
+				callDetail = new CallDetail();
+				callDetail.setContactName(contactName);
 
+				quickDialerApplication.setCallDetail(callDetail);
+				
+				int phoneNumberCount = phoneNumbers.size();
+				if (phoneNumberCount == 0) {
+					Toast noNumbers = Toast.makeText(this, R.string.no_phone_numbers, Toast.LENGTH_LONG);
+					noNumbers.show();						
+				}
+				else if (phoneNumberCount == 1) {						
+					String numberToDial = getPhoneNumberPart(phoneNumbers.get(0));
+					callDetail.setNumber(numberToDial);
+					callDetail.setStartTime(System.currentTimeMillis());
+					callDetail.setPhoneType(label);
+					
+					Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
+					startActivity(makeCall);
+				}
+				else if (phoneNumberCount > 1) {
+					CharSequence[] allNumbers = phoneNumbers.toArray(new String[phoneNumbers.size()]);
+					AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+					dialogBuilder.setTitle(R.string.pick_number);
+					dialogBuilder.setItems(allNumbers, new DialogInterface.OnClickListener() {							
+						@Override
+						public void onClick(DialogInterface dialog, int selectedNumberIdx) {
+							String numberToDial = getPhoneNumberPart(phoneNumbers.get(selectedNumberIdx));
+							
+							callDetail.setStartTime(System.currentTimeMillis());
+							callDetail.setNumber(numberToDial);
+							callDetail.setPhoneType(getLabelPart(phoneNumbers.get(selectedNumberIdx)));
+							
+							Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
+							startActivity(makeCall);
+						}
+					});
+					
+					AlertDialog pickNumberDialog = dialogBuilder.create();
+					pickNumberDialog.show();
+				}
+			} catch (NotFoundException e) {
+				e.printStackTrace();
+			}
+        	finally {
+        		if (cursor != null) {
+        			cursor.close();
+        		}
+        	}
+        }
+    }
+    
+	@Override
+	protected void onResume() {
+		super.onResume();
+		monitorPhoneState();
+	}
+    
+	protected void onStop() {
+		super.onStop();
+		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+	}
+	
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.reliance_india_call, menu);
@@ -218,7 +259,11 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 			
 			AlertDialog menuHelpDialog = dialogBuilder.create();
 			menuHelpDialog.show();
-    		return true;    		
+    		return true;    
+    	case R.id.menu_history:
+    		Intent callHistory = new Intent(this, CallHistory.class);
+    		startActivity(callHistory);
+    		return true;
     	}
 		return super.onOptionsItemSelected(item);
 	}
@@ -235,10 +280,24 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 	private String getPhoneNumberPart(String labelAndPhoneNumber) {
     	return labelAndPhoneNumber.substring(labelAndPhoneNumber.indexOf(SEPERATOR) + 3);
     }
+	
+	private String getLabelPart(String labelAndPhoneNumber) {
+    	return labelAndPhoneNumber.substring(0, labelAndPhoneNumber.indexOf(SEPERATOR));
+    }
 
 	@Override
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
 			String key) {
 		loadPreferences();
+	}
+	
+	private void monitorPhoneState() {
+		if (phoneStateListener == null) {
+	        phoneStateListener = new PhoneStateMonitor(this);
+		}
+		if (telephonyManager == null) {
+	        telephonyManager = (TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+		}
+		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
 	}
 }
