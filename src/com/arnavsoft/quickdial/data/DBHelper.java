@@ -58,7 +58,7 @@ public class DBHelper {
         Cursor cursor = null;
 
         try {
-            cursor = db.query(DB_TABLE, columns, null, null, null, null, null);
+            cursor = db.query(DB_TABLE, columns, null, null, null, null, "id DESC");
             while (cursor.moveToNext()) {
             	CallDetail callDetail = new CallDetail();
                 callDetail.setId(cursor.getInt(0));

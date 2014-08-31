@@ -6,15 +6,14 @@ import android.app.Activity;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 
-
 public class PhoneStateMonitor extends PhoneStateListener {
-	Activity activity;
-	QuickDialerApplication quickDialerApplication;
+	private Activity activity;
+	private QuickDialerApplication quickDialerApplication;
 
 	public PhoneStateMonitor(Activity activity) {
 		super();
-		this.activity = activity;
 		
+		this.activity = activity;
 		quickDialerApplication = (QuickDialerApplication) activity.getApplication();
 	}
 

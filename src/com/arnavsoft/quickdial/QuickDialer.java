@@ -5,19 +5,16 @@ import java.util.List;
 
 import com.arnavsoft.quickdial.R;
 import com.arnavsoft.quickdial.data.CallDetail;
-import com.google.analytics.tracking.android.EasyTracker;
-import com.google.analytics.tracking.android.TrackedActivity;
 
 import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Resources.NotFoundException;
 import android.database.Cursor;
 import android.telephony.PhoneStateListener;
@@ -32,33 +29,32 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class QuickDialer extends TrackedActivity implements OnSharedPreferenceChangeListener{
+public class QuickDialer extends Activity {
 	
 	private static final int REQUEST_PICK_CONTACT = 0;
-	
 	private static final String SEPERATOR = ":: ";	
-	private static String accessNumber;
 	
 	private CallDetail callDetail;
 	
-    TelephonyManager telephonyManager;
-    PhoneStateMonitor phoneStateListener;
+    private PhoneStateMonitor phoneStateMonitor;
+	private TelephonyManager telephonyManager;
+	
+    private Settings settings;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.reliance_india_call);
         
-        // Make the default preferences to take effect.
-        PreferenceManager.setDefaultValues(this, R.xml.settings, false);
+        settings = new Settings(this);
+        
         monitorPhoneState();
         
         Button pickContact = (Button) findViewById(R.id.pickContact); 
         pickContact.setOnClickListener(new View.OnClickListener()
         {
         	public void onClick(View v) {
-        		EasyTracker.getTracker().trackEvent("ui_action", "button_click", "pickContact", 0L);
-                if (null == accessNumber) {
+                if (null == Settings.accessNumber) {
         			Toast noAccessNumber = Toast.makeText(QuickDialer.this, R.string.no_access_number_detail, Toast.LENGTH_LONG);
         			noAccessNumber.show();
                 } else {       		        		
@@ -68,8 +64,7 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
         	}
         });
         
-        loadPreferences();
-        if (null == accessNumber) {
+        if (null == Settings.accessNumber) {
 			Toast noAccessNumber = Toast.makeText(this, R.string.no_access_number_mini, Toast.LENGTH_LONG);
 			noAccessNumber.show();
         }
@@ -161,7 +156,6 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 					phoneNumbers.add(label + SEPERATOR + cursor.getString(cursor.getColumnIndex(Phone.DATA)));
 				}
 				
-				
 				QuickDialerApplication quickDialerApplication = (QuickDialerApplication) getApplication();
 				
 				callDetail = new CallDetail();
@@ -180,7 +174,7 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 					callDetail.setStartTime(System.currentTimeMillis());
 					callDetail.setPhoneType(label);
 					
-					Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
+					Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Settings.accessNumber + ",,," + numberToDial));
 					startActivity(makeCall);
 				}
 				else if (phoneNumberCount > 1) {
@@ -196,7 +190,7 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 							callDetail.setNumber(numberToDial);
 							callDetail.setPhoneType(getLabelPart(phoneNumbers.get(selectedNumberIdx)));
 							
-							Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + accessNumber + ",,," + numberToDial));
+							Intent makeCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Settings.accessNumber + ",,," + numberToDial));
 							startActivity(makeCall);
 						}
 					});
@@ -218,12 +212,15 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 	@Override
 	protected void onResume() {
 		super.onResume();
+		
 		monitorPhoneState();
 	}
     
+	@Override
 	protected void onStop() {
 		super.onStop();
-		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+		
+		telephonyManager.listen(phoneStateMonitor, PhoneStateListener.LISTEN_NONE);
 	}
 	
     @Override
@@ -234,48 +231,35 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 
     @Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		
-    	switch (item.getItemId()) 
-    	{
-    	case R.id.menu_settings:
-    		EasyTracker.getTracker().trackEvent("ui_action", "menu_click", "menu_settings", 0L);
-    		Intent preferences = new Intent(this, PreferencesActivity.class);
-    		startActivity(preferences);
-    		return true;
-    	case R.id.menu_help:
-    		EasyTracker.getTracker().trackEvent("ui_action", "menu_click", "menu_help", 0L);
-    		TextView textView = new TextView(this);
-		    SpannableString helpMsg = new SpannableString(getText(R.string.menu_help_message));
-		    Linkify.addLinks(helpMsg, Linkify.ALL);		
-		    textView.setText(helpMsg);
-		    // Clicking links inside the textView inside AlertDialog does not
-		    // work without this.
-		    textView.setMovementMethod(LinkMovementMethod.getInstance());
-
-			AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-			dialogBuilder.setTitle(R.string.menu_help_title);
-			dialogBuilder.setPositiveButton(R.string.ok, null);
-			dialogBuilder.setView(textView);
-			
-			AlertDialog menuHelpDialog = dialogBuilder.create();
-			menuHelpDialog.show();
-    		return true;    
-    	case R.id.menu_history:
-    		Intent callHistory = new Intent(this, CallHistory.class);
-    		startActivity(callHistory);
-    		return true;
+    	switch (item.getItemId()) {
+	    	case R.id.menu_settings:
+	    		Intent preferences = new Intent(this, PreferencesActivity.class);
+	    		startActivity(preferences);
+	    		return true;
+	    	case R.id.menu_help:
+	    		TextView textView = new TextView(this);
+			    SpannableString helpMsg = new SpannableString(getText(R.string.menu_help_message));
+			    Linkify.addLinks(helpMsg, Linkify.ALL);		
+			    textView.setText(helpMsg);
+			    // Clicking links inside the textView inside AlertDialog does not
+			    // work without this.
+			    textView.setMovementMethod(LinkMovementMethod.getInstance());
+	
+				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+				dialogBuilder.setTitle(R.string.menu_help_title);
+				dialogBuilder.setPositiveButton(R.string.ok, null);
+				dialogBuilder.setView(textView);
+				
+				AlertDialog menuHelpDialog = dialogBuilder.create();
+				menuHelpDialog.show();
+	    		return true;    
+	    	case R.id.menu_history:
+	    		Intent callHistory = new Intent(this, CallHistory.class);
+	    		startActivity(callHistory);
+	    		return true;
     	}
 		return super.onOptionsItemSelected(item);
 	}
-    
-    private void loadPreferences() {
-    	SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-    	
-    	// Register this class to listen to any preferences changes.
-    	// Otherwise the old values will continue to be used.
-    	preferences.registerOnSharedPreferenceChangeListener(this);
-		accessNumber = preferences.getString("access_number", null);   	
-    }
 
 	private String getPhoneNumberPart(String labelAndPhoneNumber) {
     	return labelAndPhoneNumber.substring(labelAndPhoneNumber.indexOf(SEPERATOR) + 3);
@@ -284,20 +268,14 @@ public class QuickDialer extends TrackedActivity implements OnSharedPreferenceCh
 	private String getLabelPart(String labelAndPhoneNumber) {
     	return labelAndPhoneNumber.substring(0, labelAndPhoneNumber.indexOf(SEPERATOR));
     }
-
-	@Override
-	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
-			String key) {
-		loadPreferences();
-	}
 	
-	private void monitorPhoneState() {
-		if (phoneStateListener == null) {
-	        phoneStateListener = new PhoneStateMonitor(this);
+	public void monitorPhoneState() {
+		if (phoneStateMonitor == null) {
+			phoneStateMonitor = new PhoneStateMonitor(this);
 		}
 		if (telephonyManager == null) {
-	        telephonyManager = (TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+			telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 		}
-		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+        telephonyManager.listen(phoneStateMonitor, PhoneStateListener.LISTEN_CALL_STATE);
 	}
 }

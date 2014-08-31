@@ -21,5 +21,8 @@
         * Set access number for Reliance in settings. Find access number for your area at https://www.relianceglobalcall.com/Tollfree.aspx \n
         * 408-786-5015 (local access number for the San Francisco bay area) is set by default.\n
         * Must register your mobile phone number with Reliance before you can make any call.       
-        </string>     
+        </string> 
+        
+    <string name="menu_call_again">Call Again</string>
+    <string name="menu_delete_call">Delete Call</string>
 </resources>
