@@ -4,24 +4,24 @@ import com.arnavsoft.quickdial.data.CallDetail;
 import android.app.Application;
 
 public class QuickDialerApplication extends Application {
-	
+
 	private CallDetail callDetail;
 	boolean callInitiated;
 
 	public QuickDialerApplication() {
-    	super();
+		super();
 	}
 
 	@Override
 	public void onCreate() {
-	    super.onCreate();
+		super.onCreate();
 	}
-	
+
 	@Override
 	public void onTerminate() {
-	    super.onTerminate();
+		super.onTerminate();
 	}
-	
+
 	public CallDetail getCallDetail() {
 		return callDetail;
 	}

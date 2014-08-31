@@ -9,18 +9,14 @@ public class CallDetail implements Parcelable {
 	String contactName;
 	String phoneType;
 	String number;
-	long startTime;  // unix time in millis
-	long duration;   // in millis
-	
+	long startTime; // unix time in millis
+	long duration; // in millis
+
 	public CallDetail() {
 	}
-	
-	public CallDetail(int id, 
-					  String contactName, 
-					  String phoneType,
-					  String number, 
-					  long startTime, 
-					  int duration) {
+
+	public CallDetail(int id, String contactName, String phoneType,
+			String number, long startTime, int duration) {
 		this.id = id;
 		this.contactName = contactName;
 		this.phoneType = phoneType;
@@ -81,14 +77,14 @@ public class CallDetail implements Parcelable {
 	public int describeContents() {
 		return 0;
 	}
-	
-    @Override
-    public String toString() {
-    	DateFormat df = DateFormat.getDateTimeInstance();
-    	
-        return contactName + "(" + phoneType + "):" + number +
-        		"\n" + df.format(startTime) + "(" + duration/1000 + "s)";
-    }
+
+	@Override
+	public String toString() {
+		DateFormat df = DateFormat.getDateTimeInstance();
+
+		return contactName + "(" + phoneType + "):" + number + "\n"
+				+ df.format(startTime) + "(" + duration / 1000 + "s)";
+	}
 
 	@Override
 	public void writeToParcel(Parcel dest, int flags) {
@@ -99,17 +95,17 @@ public class CallDetail implements Parcelable {
 		dest.writeLong(startTime);
 		dest.writeLong(duration);
 	}
-	
-    public static final Parcelable.Creator<CallDetail> CREATOR = new Parcelable.Creator<CallDetail>() {
+
+	public static final Parcelable.Creator<CallDetail> CREATOR = new Parcelable.Creator<CallDetail>() {
 		public CallDetail createFromParcel(Parcel in) {
-		    return new CallDetail(in);
+			return new CallDetail(in);
 		}
-		
+
 		public CallDetail[] newArray(int size) {
-		    return new CallDetail[size];
+			return new CallDetail[size];
 		}
 	};
-		
+
 	private CallDetail(Parcel in) {
 		id = in.readInt();
 		contactName = in.readString();
