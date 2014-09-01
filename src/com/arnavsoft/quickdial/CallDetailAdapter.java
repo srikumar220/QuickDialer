@@ -41,8 +41,7 @@ public class CallDetailAdapter extends BaseAdapter {
 		CallDetail callDetail = callDetails.get(position);
 
 		if ((convertView == null) || !(convertView instanceof CallDetailView)) {
-			CallDetailView callDetailView = new CallDetailView(context,
-					callDetail);
+			CallDetailView callDetailView = new CallDetailView(context, callDetail);
 
 			if (position % 2 == 1) {
 				callDetailView.setBackgroundColor(Color.parseColor("#FFF8C6"));
