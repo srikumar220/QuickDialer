@@ -24,11 +24,8 @@ public class Settings implements OnSharedPreferenceChangeListener {
 	}
 
 	@Override
-	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
-			String key) {
-
-		accessNumber = sharedPreferences.getString(key, null); // we have just
-																// one
-																// preference.
+	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+		// we have just one preference, accessNumber
+		accessNumber = sharedPreferences.getString(key, null); 
 	}
 }

@@ -92,8 +92,7 @@ public class CallDetailAdapter extends BaseAdapter {
 		}
 
 		public void setDetails(CallDetail callDetail) {
-			contactInfo
-					.setText(callDetail.getContactName() + "("
+			contactInfo.setText(callDetail.getContactName() + "("
 							+ callDetail.getPhoneType() + "):"
 							+ callDetail.getNumber());
 

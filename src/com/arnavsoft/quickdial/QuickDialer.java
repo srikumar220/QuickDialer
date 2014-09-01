@@ -205,18 +205,13 @@ public class QuickDialer extends Activity {
 									String numberToDial = getPhoneNumberPart(phoneNumbers
 											.get(selectedNumberIdx));
 
-									callDetail.setStartTime(System
-											.currentTimeMillis());
+									callDetail.setStartTime(System.currentTimeMillis());
 									callDetail.setNumber(numberToDial);
-									callDetail
-											.setPhoneType(getLabelPart(phoneNumbers
-													.get(selectedNumberIdx)));
+									callDetail.setPhoneType(getLabelPart(phoneNumbers.get(selectedNumberIdx)));
 
 									Intent makeCall = new Intent(
 											Intent.ACTION_CALL,
-											Uri.parse("tel:"
-													+ Settings.accessNumber
-													+ ",,," + numberToDial));
+											Uri.parse("tel:" + Settings.accessNumber + ",,," + numberToDial));
 									startActivity(makeCall);
 								}
 							});
